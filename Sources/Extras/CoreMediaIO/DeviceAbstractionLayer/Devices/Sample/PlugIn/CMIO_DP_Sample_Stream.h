@@ -69,23 +69,6 @@
 #include "CAPThread.h"
 #include "CAGuard.h"
 
-extern "C" {
-#include <libswscale/swscale.h>
-}
-
-#include "AtomCamera.h"
-#include "Frame.h"
-#include "BlenderFilter.hpp"
-#include "BlenderSink.hpp"
-#include "RawFrameSrc.hpp"
-
-#include <editor/filter/decode_filter.h>
-#include <editor/filter/scale_filter.h>
-#include <editor/filter/queue_filter.h>
-#include <editor/media_pipe.h>
-#include <av_toolbox/scaler.h>
-#include <thread>
-
 // System Includes
 #include <CoreMedia/CMSampleBuffer.h> 
 
@@ -283,20 +266,8 @@ namespace CMIO { namespace DP { namespace Sample
 		RecentTimingInfo						mRecentTimingInfo[2];
 		UInt32									mRecentTimingInfoIdx;
         
-        std::shared_ptr<AtomCamera>              mAtomCamera;
-        std::string                             mOffset;
-        std::thread                             mStreamThread;
-        std::thread                            mPlugDetectionThread;
-        bool                                    mIsCameraAttached;
         uint8_t*                               mFrame;
         uint8_t*                               mLogo;
-        std::shared_ptr<ins::MediaPipe>           mMediaPipe;
-        std::shared_ptr<ins::RawFrameSrc>          mRawFrameSrc;
-        std::shared_ptr<ins::DecodeFilter>         mDecoderFilter;
-        std::shared_ptr<ins::ScaleFilter>          mScaleBeforeBlend;
-        std::shared_ptr<ins::BlenderFilter>        mBlenderFilter;
-        std::shared_ptr<ins::ScaleFilter>          mScaleAfterBlend;
-        std::shared_ptr<ins::BlenderSink>          mBlenderSink;
 	};
 }}}
 

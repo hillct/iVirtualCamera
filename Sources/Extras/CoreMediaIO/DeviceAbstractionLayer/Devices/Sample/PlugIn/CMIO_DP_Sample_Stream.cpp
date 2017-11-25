@@ -116,7 +116,7 @@ namespace CMIO { namespace DP { namespace Sample
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	Stream::Stream(CMIOStreamID streamID, PlugIn& plugIn, Device& owningDevice, CMIOObjectPropertyScope scope, UInt32 startingDeviceChannelNumber) :
 		DP::Stream(streamID, plugIn, owningDevice, scope, startingDeviceChannelNumber),
-		mStreamName(CFSTR("Insta360 Air Live Stream"), false),
+		mStreamName(CFSTR("Insta360 Live Stream"), false),
 		mDiscontinuityFlags(kCMIOSampleBufferNoDiscontinuities),
 		mExtendedDurationHostTime(0),
 		mExtendedDurationTimingInfo(),
@@ -141,8 +141,6 @@ namespace CMIO { namespace DP { namespace Sample
 		mOutputHosttimeCorrection(0LL),
 		mPreviousCycleTimeSeconds(0xFFFFFFFF),
 		mSyncClock(true),
-        mAtomCamera(nullptr),
-        mIsCameraAttached(false),
         mFrame(nullptr),
         mLogo(nullptr)
 	{
@@ -161,8 +159,6 @@ namespace CMIO { namespace DP { namespace Sample
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	void Stream::Initialize()
 	{
-        ins::InitFFmpeg();
-        
         mLogo = new uint8_t[kYUV_1472X828_FrameSize];
         if (mLogo)
         {
@@ -249,11 +245,6 @@ namespace CMIO { namespace DP { namespace Sample
         if (mLogo)
         {
             delete [] mLogo;
-        }
-        
-        if (mPlugDetectionThread.joinable())
-        {
-            mPlugDetectionThread.join();
         }
         
 		// Empty all the format descriptions from the format list
@@ -962,164 +953,13 @@ namespace CMIO { namespace DP { namespace Sample
 		return true;
 	}
     
-    void Stream::HotPlugDetection()
-    {
-        LOGINFO("Detection thread start...");
-        uvc_context_t *mUVCContext = nullptr;
-        uvc_init(NULL ,&mUVCContext, NULL);
-        int retv = -1;
-        
-        std::chrono::steady_clock::time_point nextCheckTime;
-        // mShouldTerminate indicate that the plugin instance is destroyed.
-        // Then all children threads of the program should terminate.
-        while(!ShouldTerminate)
-        {
-            nextCheckTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
-            int numDevs = 0;
-            uvc_device_t **devs = NULL;
-            retv = uvc_get_devices(mUVCContext, &devs, &numDevs, 0x2e1a, 0x1000);
-            if(retv != 0)
-            {
-                if(retv == UVC_ERROR_NO_DEVICE)
-                {
-                    LOGINFO("No device found. Sleep for 500 milliseconds.");
-                    if (mFrame != nullptr)
-                    {
-                        delete [] mFrame;
-                        mFrame = nullptr;
-                    }
-                    
-                    // The camera is removed and the streaming thread
-                    // should be terminate to release resources.
-                    if (mIsCameraAttached)
-                    {
-                        mIsCameraAttached = false;
-                        
-                        if (mMediaPipe != nullptr)
-                        {
-                            mMediaPipe->Cancel();
-                        }
-                        
-                        if (mAtomCamera != nullptr)
-                        {
-                            LOGINFO("Camera closed successfully.");
-                            mAtomCamera->close();
-                            mAtomCamera = nullptr;
-                        }
-                        
-                        if (mStreamThread.joinable())
-                        {
-                            mStreamThread.join();
-                        }
-                    }
-                }
-                else
-                {
-                    LOGERR("Failed to get uvc list.");
-                    break;
-                }
-            }
-            
-            // The hot plugging detection thread detects that the camera is attached.
-            // We then prepare to open the camera and start a child thread to convey video frames.
-            if (!mIsCameraAttached && numDevs > 0)
-            {
-                LOGINFO("Prepare to open camera...");
-                mAtomCamera = std::make_shared<AtomCamera>();
-                int ret = mAtomCamera->open(StreamFormat::MJPEG, FRAME_WIDTH, FRAME_HEIGHT, 30, 8*1024*1024);
-                if (ret == 0)
-                {
-                    // Get offset from device.
-                    ret = mAtomCamera->getCameraOffset(mOffset);
-                    if (ret == 0)
-                    {
-                        LOGINFO("Device offset: %s", mOffset.c_str());
-                        
-                        mFrame = new uint8_t[kYUV_1472X828_FrameSize];
-                        if (mFrame == nullptr)
-                        {
-                            LOGERR("Can't allocate frame for frame.");
-                        }
-                        
-                        mIsCameraAttached = true;
-                        // Start the thread to read frame from device.
-                        mStreamThread = std::thread(&Stream::StreamThread, this);
-                    }
-                    else
-                    {
-                        LOGERR("Failed to get device offset...");
-                    }
-                }
-            }
-            
-            std::this_thread::sleep_until(nextCheckTime);
-        }
-        
-        if (mMediaPipe != nullptr)
-        {
-            mMediaPipe->Cancel();
-        }
-        
-        if (mAtomCamera != nullptr)
-        {
-            LOGINFO("Camera closed successfully.");
-            mAtomCamera->close();
-            mAtomCamera = nullptr;
-        }
-        
-        if (mStreamThread.joinable())
-        {
-            mStreamThread.join();
-        }
-        
-        LOGINFO("Detection thread end...");
-    }
     
-    void Stream::StreamThread()
-    {
-        LOGINFO("Streaming thread start...");
-        
-        mMediaPipe = std::make_shared<ins::MediaPipe>();
-        mRawFrameSrc = std::make_shared<ins::RawFrameSrc>(mAtomCamera, FRAME_WIDTH, FRAME_HEIGHT);
-        mDecoderFilter = std::make_shared<ins::DecodeFilter>();
-        mScaleBeforeBlend = std::make_shared<ins::ScaleFilter>(FRAME_WIDTH, FRAME_HEIGHT, AV_PIX_FMT_BGRA, SWS_FAST_BILINEAR);
-        mBlenderFilter = std::make_shared<ins::BlenderFilter>(FRAME_WIDTH, FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, mOffset);
-        mScaleAfterBlend = std::make_shared<ins::ScaleFilter>(OUTPUT_WIDTH, OUTPUT_HEIGHT, AV_PIX_FMT_UYVY422, SWS_FAST_BILINEAR);
-        mBlenderSink = std::make_shared<ins::BlenderSink>(mFrame);
-        mRawFrameSrc->set_video_filter(mDecoderFilter)
-                    ->set_next_filter(mScaleBeforeBlend)
-                    ->set_next_filter(mBlenderFilter)
-                    ->set_next_filter(mScaleAfterBlend)
-                    ->set_next_filter(mBlenderSink);
-        if (!mRawFrameSrc->Prepare())
-        {
-            LOGERR("Raw frame source isn't ready.");
-            return;
-        }
-        
-        mMediaPipe->AddMediaSrc(mRawFrameSrc);
-        
-        mMediaPipe->RegisterCallback([&](ins::MediaPipe::MediaPipeState state){
-            if (state == ins::MediaPipe::kMediaPipeError)
-            {
-                mMediaPipe->Cancel();
-                LOGERR("Media pipe canceled.");
-            }
-        });
-        
-        mMediaPipe->Run();
-        mMediaPipe->Wait();
-        
-        LOGINFO("Streaming thread end...");
-    }
-
 	#pragma mark -
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// Start()
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	void Stream::Start()
 	{
-        mPlugDetectionThread = std::thread(&Stream::HotPlugDetection, this);
 		// Throw an exception if another process is hogging the device
 		ThrowIf(not GetOwningDevice().HogModeIsOwnedBySelfOrIsFree(), CAException(kCMIODevicePermissionsError), "CMIO::DP::Sample::Stream::Start: can't start the stream because hog mode is owned by another process");
 
@@ -1393,15 +1233,9 @@ namespace CMIO { namespace DP { namespace Sample
 			CMBlockBufferCustomBlockSource customBlockSource = { kCMBlockBufferCustomBlockSourceVersion, NULL, ReleaseBufferCallback, this };
 			// Get the size & data for the frame
             size_t frameSize = message->mDescriptor.size;
+
+            memcpy(message->mDescriptor.address, mLogo, frameSize);
             
-            if (mIsCameraAttached)
-            {
-                memcpy(message->mDescriptor.address, mFrame, frameSize);
-            }
-            else
-            {
-                memcpy(message->mDescriptor.address, mLogo, frameSize);
-            }
             // Get a frame from frame queue
             void* data = message->mDescriptor.address;
             
