@@ -1,3 +1,6 @@
+**NOTE**
+This project is incompatible with the latest OS, it may causes the system crash at boot.
+
 # iVirtualCamera - A open source virtual camera for macOS
 
 By the present of CoreMediaIO framework, we can create virtual camera for some purposes. Many applications use virtual camera to handle camera video stream such as **ManyCam**, **CamTwist**, **CamMask** and etc.  
