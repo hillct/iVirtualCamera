@@ -1136,7 +1136,7 @@ bool IOVideoSampleDevice::AddOutputStreams()
 	IOMemoryDescriptor* cntrldescr;
 	IOStreamBuffer* buf;
 	OSArray* buffers;
-	int numBuffers;
+	int numBuffers = 0;
 	//	initialize some locals that might need cleaning up
 	OSDictionary*	theOutputStream = NULL;
 	OSArray*		theOutputStreamList = NULL;
