@@ -68,7 +68,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		mDroppedFrameCount(droppedFrameCount),
 		mFirstFrameTime(firstFrameTime),
 		mBufferID(bufferID),
-		mSize(size),
+		mSize(static_cast<UInt32>(size)),
 		mFrameData(data),
 		mClients(),
 		mClientsMutex("frame clients mutex")

@@ -683,13 +683,13 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		{
 			// This answer is a CMIODeviceStreamConfiguration
 			// This device has a single input stream with one channel, so creating the resultant CMIODeviceStreamConfiguration is straight forward
-			UInt32 inputStreamCount = mInputStreams.size();
+			auto inputStreamCount = mInputStreams.size();
 			size = sizeof(UInt32) + (sizeof(UInt32) * inputStreamCount);
 			ThrowIfKernelError(vm_allocate(mach_task_self(), reinterpret_cast<vm_address_t*>(data), size, true), CAException(-1), "Device::GetPropertyState: allocation failed for kInputStreamConfigurationAddress");
 
 			// Fill in the CMIODeviceStreamConfiguration
 			CMIODeviceStreamConfiguration** streamConfiguration = reinterpret_cast<CMIODeviceStreamConfiguration**>(data);
-			(**streamConfiguration).mNumberStreams = inputStreamCount;
+			(**streamConfiguration).mNumberStreams = static_cast<UInt32>(inputStreamCount);
 			
 			for (UInt32 i = 0 ; i < inputStreamCount ; ++i)
 			{
@@ -700,13 +700,13 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		else if (PropertyAddress::IsSameAddress(address, kOutputStreamConfigurationAddress))
 		{
 			// This answer is a CMIODeviceStreamConfiguration
-			UInt32 outputStreamCount = mOutputStreams.size();
+			auto outputStreamCount = mOutputStreams.size();
 			size = sizeof(UInt32) + (sizeof(UInt32) * outputStreamCount);
 			ThrowIfKernelError(vm_allocate(mach_task_self(), reinterpret_cast<vm_address_t*>(data), size, true), CAException(-1), "Device::GetPropertyState: allocation failed for kOutputStreamConfigurationAddress");
 
 			// Fill in the CMIODeviceStreamConfiguration
 			CMIODeviceStreamConfiguration** streamConfiguration = reinterpret_cast<CMIODeviceStreamConfiguration**>(data);
-			(**streamConfiguration).mNumberStreams = outputStreamCount;
+			(**streamConfiguration).mNumberStreams = static_cast<UInt32>(outputStreamCount);
 			
 			for (UInt32 i = 0 ; i < outputStreamCount ; ++i)
 			{
@@ -860,7 +860,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		}
 
 		// Report the length (in bytes)
-		*length = size;
+		*length = static_cast<mach_msg_type_number_t>(size);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1067,7 +1067,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		memcpy(*controlChanges, &(*changedControls.begin()), sizeof(ControlChanges) * changedControls.size());
 
 		// Report the number of changed controls
-		*length = changedControls.size();
+        *length = static_cast<mach_msg_type_number_t>(changedControls.size());
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1333,7 +1333,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		}
 		
 		// Report the length (in bytes)
-		*length = size;
+        *length = static_cast<mach_msg_type_number_t>(size);
 	}
 	
 	

@@ -694,7 +694,7 @@ namespace CMIO { namespace DP { namespace Sample
 				mFrameType = frameType;
 
 				// Send out the property changed notifications 
-				PropertiesChanged(notifications.GetNumberItems(), notifications.GetItems());
+				PropertiesChanged(static_cast<UInt32>(notifications.GetNumberItems()), notifications.GetItems());
 			}
 		
 		}
@@ -862,7 +862,7 @@ namespace CMIO { namespace DP { namespace Sample
 		changedProperties.AppendUniqueItem(address);
 
 		// Send out the property changed notifications 
-		PropertiesChanged(changedProperties.GetNumberItems(), changedProperties.GetItems());
+		PropertiesChanged(static_cast<UInt32>(changedProperties.GetNumberItems()), changedProperties.GetItems());
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1399,7 +1399,7 @@ namespace CMIO { namespace DP { namespace Sample
                 
                 // Describe the buffer
                 reply.asOutputBufferSuppliedMessage.mDescriptor.address			= blockBuffer.GetDataPointer(0, NULL, NULL);
-                reply.asOutputBufferSuppliedMessage.mDescriptor.size			= dataLength;
+                reply.asOutputBufferSuppliedMessage.mDescriptor.size			= static_cast<mach_msg_size_t>(dataLength);
                 reply.asOutputBufferSuppliedMessage.mDescriptor.deallocate		= false;
                 reply.asOutputBufferSuppliedMessage.mDescriptor.copy			= MACH_MSG_VIRTUAL_COPY;
                 reply.asOutputBufferSuppliedMessage.mDescriptor.pad1			= 0;
@@ -1485,7 +1485,7 @@ namespace CMIO { namespace DP { namespace Sample
                     
                     // Describe the buffer
                     reply.asOutputBufferSuppliedMessage.mDescriptor.address			= CVPixelBufferGetBaseAddress(pixelBuffer);
-                    reply.asOutputBufferSuppliedMessage.mDescriptor.size			= CVPixelBufferGetHeight(pixelBuffer) * CVPixelBufferGetBytesPerRow(pixelBuffer);
+                    reply.asOutputBufferSuppliedMessage.mDescriptor.size			= static_cast<mach_msg_size_t>(CVPixelBufferGetHeight(pixelBuffer) * CVPixelBufferGetBytesPerRow(pixelBuffer));
                     reply.asOutputBufferSuppliedMessage.mDescriptor.deallocate		= false;
                     reply.asOutputBufferSuppliedMessage.mDescriptor.copy			= MACH_MSG_VIRTUAL_COPY;
                     reply.asOutputBufferSuppliedMessage.mDescriptor.pad1			= 0;
