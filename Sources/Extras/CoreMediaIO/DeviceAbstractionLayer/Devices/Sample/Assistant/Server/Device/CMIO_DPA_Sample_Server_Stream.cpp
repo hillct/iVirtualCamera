@@ -339,6 +339,10 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			mProperties[PropertyAddress(kCMIOStreamPropertyOutputBufferUnderrunCount, GetDevicePropertyScope(), element)].mShadowTime = shadowTime;
 			mProperties[PropertyAddress(kCMIOStreamPropertyOutputBufferRepeatCount, GetDevicePropertyScope(), element)].mShadowTime = shadowTime;
 		}
+        
+        mFrameDataSize = 1472 * 828 * 2;
+        mFrameData = new uint8_t[mFrameDataSize];
+        memset(mFrameData, 0xff, mFrameDataSize);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -349,6 +353,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		// Release the Mach port from which frames were requested
 		if (MACH_PORT_NULL != mOutputBufferRequestPort)
 			(void) mach_port_deallocate(mach_task_self(), mOutputBufferRequestPort);
+        
+        delete[] mFrameData;
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -356,7 +362,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	UInt32 Stream::GetStartingDeviceChannelNumber() const
 	{
-		return CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StartingDeviceChannelNumber))), false).GetSInt32();
+		// return CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StartingDeviceChannelNumber))), false).GetSInt32();
+        return 1;
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -996,14 +1003,18 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	void Stream::FrameArrived()
 	{
 		// Get the host time of the the frame (currently reported as the sole contents of the entry's control buffer)
+        UInt64 vbiTime = 0;
+        UInt64 firstVBITime = 0;
+        UInt64 droppedFrameCount = 0;
+        
 		// Create the presentation time stamp
-//        CMTime presentationTimeStamp = CMTimeMakeWithSeconds(CAHostTimeBase::ConvertToNanos(theBufferControl->vbiTime) / 1000000000.0, GetNominalFrameDuration().timescale);
+        CMTime presentationTimeStamp = CMTimeMakeWithSeconds(CAHostTimeBase::ConvertToNanos(vbiTime) / 1000000000.0, GetNominalFrameDuration().timescale);
 		
 		// Create the timing information
-//        CMA::SampleBuffer::TimingInfo timingInfo(GetNominalFrameDuration(), presentationTimeStamp, kCMTimeInvalid);
+        CMA::SampleBuffer::TimingInfo timingInfo(GetNominalFrameDuration(), presentationTimeStamp, kCMTimeInvalid);
 		
 		// Wrap the entry in a Frame
-        Frame* frame = nullptr;//new Frame(mIOSAStream, GetFrameType(), theBufferControl->vbiTime, timingInfo, GetDiscontinuityFlags(), static_cast<UInt32>(theBufferControl->droppedFrameCount), theBufferControl->firstVBITime, entry.dataLength, mIOSAStream.GetDataBuffer(entry.bufferID));
+        Frame* frame = new Frame(GetFrameType(), vbiTime, timingInfo, GetDiscontinuityFlags(), static_cast<UInt32>(droppedFrameCount), firstVBITime, mFrameDataSize, mFrameData);
 
 		// Clear the discontinuity flags since any accumulated discontinuties have passed onward with the frame
 		SetDiscontinuityFlags(kCMIOSampleBufferNoDiscontinuities);

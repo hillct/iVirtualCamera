@@ -175,7 +175,10 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		FrameType						mFrameType;				// The device's current FrameType
 		FrameTypeToFrameRatesMap		mFrameRatesMap;			// The map of frame rates each FrameType is capable of generating 
 		Float64							mFrameRate;				// The device's current frame rate
-		CMTime							mNominalFrameDuration;	// The device's current frame duration	
+		CMTime							mNominalFrameDuration;	// The device's current frame duration
+        
+        uint8_t* mFrameData;
+        size_t mFrameDataSize;
 
 	// Management
 	public:

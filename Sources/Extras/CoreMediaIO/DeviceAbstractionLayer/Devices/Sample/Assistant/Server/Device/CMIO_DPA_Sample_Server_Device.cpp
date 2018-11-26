@@ -324,12 +324,24 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	{
 		// Grab the mutex for the Device's state
 		CAMutex::Locker locker(mStateMutex);
+        
+        UInt32 streamID = 0;
+        
+        CACFDictionary format;
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_CodecType), kYUV422_1472x828);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_CodecFlags), kSampleCodecFlags_30fps);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Width), 1472);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Height), 828);
 
-        // Add the stream to the map of input streams the device tracks
-        // TODO: add stream
-//        mInputStreams[streamID] = new Stream(this, streamDictionary, kCMIODevicePropertyScopeInput);
-	
-	}
+        CACFArray formats;
+        formats.AppendDictionary(format.GetDict());
+
+        CACFDictionary streamDict;
+        streamDict.AddArray(CFSTR(kIOVideoStreamKey_AvailableFormats), formats.GetCFArray());
+
+        auto s = new Stream(this, streamDict.GetDict(), kCMIODevicePropertyScopeInput);
+        mInputStreams[streamID] = s;
+    }
 
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
