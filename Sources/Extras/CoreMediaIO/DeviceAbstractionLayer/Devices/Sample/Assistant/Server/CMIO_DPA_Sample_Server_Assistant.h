@@ -57,8 +57,6 @@
 #include "CMIO_DPA_Sample_Shared.h"
 
 // Public Utility Includes
-#include "CMIO_IOKA_Object.h"
-#include "CMIO_PTA_NotificationPortThread.h"
 
 // CA Public Utility Includes
 #include "CAMutex.h"
@@ -135,18 +133,12 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 
 	// Device Mangagement
 	public:
-		static void					DeviceArrived(Assistant& assistant, io_iterator_t iterator);
+		static void					DeviceArrived(Assistant& assistant);
 		void						DeviceRemoved(Device& device);
 
 	private:
-		void						InitializeDeviceAddedNotification();
-		void						CreateDeviceAddedNotification(CFMutableDictionaryRef matchingDictionary);
+		typedef std::set<Device*>					Devices;
 
-		typedef std::vector<IOKA::Object>			NotificationIterators;
-		typedef std::set<Device*>					Devices;				 
-
-		PTA::NotificationPortThread	mNotificationPortThread;				// Thread for getting IOKit notifications on
-		NotificationIterators		mDeviceAddedIterators;					// A "kIOMatchedNotification" notifcation iterator for each "matching dictionary"
 		Devices						mDevices;
 
 	// Client Management

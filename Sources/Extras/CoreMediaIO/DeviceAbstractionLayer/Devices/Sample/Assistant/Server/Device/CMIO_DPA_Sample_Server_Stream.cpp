@@ -61,7 +61,6 @@
 
 // Public Utility Includes
 #include "CMIODebugMacros.h"
-#include "CMIO_PTA_NotificationPortThread.h"
 
 // CA Public Utility Includes
 #include "CACFNumber.h"
@@ -69,7 +68,6 @@
 #include "log.h"
 
 // System Includes
-#include <IOKit/video/IOVideoTypes.h>
 #include <CoreMediaIO/CMIOHardware.h>
 #include "CMIO_CVA_Pixel_Buffer.h"
 #include "CMIO_SA_Assistance.h"
@@ -84,12 +82,9 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// Stream()
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	Stream::Stream(Device* device, IOKA::Object& registryEntry, CFDictionaryRef streamDictionary, CMIOObjectPropertyScope scope) :
+	Stream::Stream(Device* device, CFDictionaryRef streamDictionary, CMIOObjectPropertyScope scope) :
 		mDevice(device),
-		mRegistryEntry(registryEntry),
 		mStreamDictionary(static_cast<CFDictionaryRef>(NULL), true),
-        mIOSPAlugIn(IOSA::AllocatePlugIn(mRegistryEntry)),
-        mIOSAStream(IOSA::AllocateStream(mIOSPAlugIn)),
 		mStateMutex("CMIO::DPA::Sample::Stream state mutex"),
 		mIsInput(kCMIODevicePropertyScopeInput == scope),
 		mStreaming(false),
@@ -118,11 +113,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		mDeck(*this)
 	{
 		mStreamDictionary = streamDictionary;
-		// Specify the stream's callback
-		mIOSAStream.SetOutputCallback(reinterpret_cast<IOStreamOutputCallback>(StreamOutputCallback), this);
-				
-		// Add the stream's run loop source to the notification thread's run loop
-		mIOSAStream.AddToRunLoop(GetOwningDevice().GetNotificationThread().GetRunLoop());
 
 		UInt32 element = GetStartingDeviceChannelNumber();
 		UInt64 shadowTime = CAHostTimeBase::GetTheCurrentTime();
@@ -356,15 +346,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	Stream::~Stream()
 	{
-		if (mIOSAStream.IsValid())
-		{
-			// Remove the stream's callback
-			(void) (**mIOSAStream).SetOutputCallback(mIOSAStream, NULL, NULL);
-
-			// Remove the stream from the notification thread's run loop
-			(void) (**mIOSAStream).RemoveFromRunLoop(mIOSAStream, GetOwningDevice().GetNotificationThread().GetRunLoop());
-		}
-
 		// Release the Mach port from which frames were requested
 		if (MACH_PORT_NULL != mOutputBufferRequestPort)
 			(void) mach_port_deallocate(mach_task_self(), mOutputBufferRequestPort);
@@ -624,8 +605,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 						throw CAException(kCMIOHardwareIllegalOperationError);
 				}
 				
-				GetOwningDevice().GetIOVADevice().SetStreamFormat(CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32(), &theNewFormat);
-
 				// Start the stream
 				Start(MACH_PORT_NULL, MACH_PORT_NULL, kCMIOSampleBufferDiscontinuityFlag_DataFormatChanged);
 				
@@ -671,9 +650,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 						throw CAException(kCMIOHardwareIllegalOperationError);
 				}
 				
-				GetOwningDevice().GetIOVADevice().SetStreamFormat(CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32(), &theNewFormat);
-
-
 				// Update the shadow time for the format description since it changed
 				mProperties[PropertyAddress(kCMIOStreamPropertyFormatDescription, GetDevicePropertyScope(), GetStartingDeviceChannelNumber())].mShadowTime = CAHostTimeBase::GetTheCurrentTime();
 				
@@ -770,8 +746,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 						
 				}
                 
-				GetOwningDevice().GetIOVADevice().SetStreamFormat(CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32(), &theNewFormat);
-                
 				Start(MACH_PORT_NULL, MACH_PORT_NULL, kCMIOSampleBufferDiscontinuityFlag_DataFormatChanged);
 
 				mFrameRate = frameRate;
@@ -806,11 +780,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
                         theNewFormat.mWidth = 1472;
                         theNewFormat.mHeight = 828;
                         break;
-               }
-				
-				GetOwningDevice().GetIOVADevice().SetStreamFormat(CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(mStreamDictionary.GetCFDictionary(), CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32(), &theNewFormat);
-                
-                            
+                }
+
 				// Update the shadow time for the frame rate if it is different
 				mFrameRate = frameRate;
                 
@@ -856,14 +827,12 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 				return;
 			
 			// Attempt to open the stream
-			mIOSAStream.Open();
 			
 			try
 			{
 				if (IsInput())
 				{
 					// Start the stream
-					mIOSAStream.Start();
 				}
 				else
 				{
@@ -881,7 +850,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 
 					// Release any lingering output sample buffer
 					mOutputBuffer.Reset();
-					mFreeList.clear();
 
 					// Intialize event times for providing device clock information
 					mEvents[0].mEventTime		= kCMTimeInvalid;
@@ -889,15 +857,11 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 					mPreviousEvent				= mEvents[0];
 					mPreviousNotedEvent			= mEvents[0];
 					mCurrentEventIndex			= 0;
-
-					// Start the stream
-					mIOSAStream.Start();
 				}
 			}
 			catch (...)
 			{
 				// Something went wrong, so close the stream 
-				mIOSAStream.Close();
 				throw;
 			}
 
@@ -968,7 +932,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		if (IsInput())
 		{
 			// Stop the IOStream
-			mIOSAStream.Stop();
 		
 			// Notify all the client stream message threads that a frame might be available
 			mFrameAvailableGuard.NotifyAll();		
@@ -984,11 +947,9 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		else
 		{
 			// Stop the IOStream
-			mIOSAStream.Stop();
 		
 			// Release any lingering output buffer
 			mOutputBuffer.Reset();
-			mFreeList.clear();
 			
 			if (client != MACH_PORT_NULL)
 			{
@@ -1002,14 +963,13 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		}
 	
 		// Close the IOSteam
-		mIOSAStream.Close();
 	}
 
  	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// StreamOutputCallback()
 	//	Called when a new buffer is available from the kernel
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    void Stream::StreamOutputCallback(IOStreamRef /*streamRef*/, Stream& stream)
+    void Stream::StreamOutputCallback(Stream& stream)
     {
 		// Indicate that the output callback is being invoked so Stop() won't release resources  
 		stream.mInOutputCallBack = true;
@@ -1023,122 +983,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			
 		if (stream.IsInput())
 		{
-            IOStreamBufferQueueEntry entry;
-			while (kIOReturnSuccess == (**stream.mIOSAStream).DequeueOutputEntry(stream.mIOSAStream, &entry))
-			{
-				// Don't let any exceptions leave this callback
-				try
-				{
-					stream.FrameArrived(entry);
-				}
-				catch (...)
-				{
-					// Something went wrong, so return the entry to the queue
-					(**stream.mIOSAStream).EnqueueInputBuffer(stream.mIOSAStream, entry.bufferID, 0, 0, 0, 0);
-					(**stream.mIOSAStream).SendInputNotification(stream.mIOSAStream, 0xAA);
-				}
-			}
-		}
-		else
-		{
-			// Process the entries on the output buffer list and move them to the free list
-			IOStreamBufferQueueEntry entry;
-			while (kIOReturnSuccess == (**stream.mIOSAStream).DequeueOutputEntry(stream.mIOSAStream, &entry))
-			{
-				SampleVideoDeviceControlBuffer theBufferControl;
-				bcopy(stream.mIOSAStream.GetControlBuffer(entry.bufferID), &theBufferControl, sizeof(SampleVideoDeviceControlBuffer));
-				LOGINFO("Buffer Control info vbitime = %lld dmatime = %lld framecount=%lld dropcount = %d lastSequenceNumber = %lld discontinuity flags = %ld", theBufferControl.vbiTime, theBufferControl.outputTime, theBufferControl.totalFrameCount, theBufferControl.droppedFrameCount, theBufferControl.sequenceNumber, theBufferControl.discontinuityFlags);
-				if ((theBufferControl.discontinuityFlags & kCMIOSampleBufferDiscontinuityFlag_DataWasFlushed))
-				{
-					stream.mLastOutputSequenceNumber = theBufferControl.sequenceNumber; 
-				}
-				else
-				{
-					stream.mLastOutputSequenceNumber = theBufferControl.sequenceNumber; 
-					// Determine clock time based on frame count
-					if (CMTIME_IS_INVALID(stream.mEvents[0].mEventTime))
-					{
-						// RFP FixMe and support for other sample rates
-						stream.mEvents[1].mEventTime = stream.mNominalFrameDuration;
-						stream.mEvents[1].mEventFrameCount = theBufferControl.totalFrameCount; 
-                        stream.mEvents[1].mDroppedFrameCount = static_cast<UInt32>(theBufferControl.droppedFrameCount);
-						
-						stream.mEvents[0].mEventTime = CMTimeMake(stream.mEvents[1].mEventTime.timescale, stream.mEvents[1].mEventTime.timescale);
-						stream.mEvents[0].mEventFrameCount = stream.mEvents[1].mEventFrameCount;
-						stream.mEvents[0].mDroppedFrameCount = stream.mEvents[1].mDroppedFrameCount;
-					}
-					else
-					{
-						// Bump to next frame
-						stream.mEvents[0].mEventFrameCount = theBufferControl.totalFrameCount;
-                        stream.mEvents[0].mDroppedFrameCount = static_cast<UInt32>(theBufferControl.droppedFrameCount);
-						stream.mEvents[0].mEventTime = CMTimeAdd(stream.mEvents[0].mEventTime, CMTimeMake(stream.mNominalFrameDuration.value*(stream.mEvents[0].mEventFrameCount- stream.mEvents[1].mEventFrameCount), stream.mNominalFrameDuration.timescale));
-						if (stream.mEvents[0].mDroppedFrameCount != stream.mEvents[1].mDroppedFrameCount)
-						{
-							++stream.mUnderrunCount;
-							
-							// The kTundraStreamPropertyOutputBufferUnderrunCount property has changed, so send out notifications
-							stream.mProperties[PropertyAddress(kCMIOStreamPropertyOutputBufferUnderrunCount, stream.GetDevicePropertyScope(), stream.GetStartingDeviceChannelNumber())].mShadowTime = CAHostTimeBase::GetTheCurrentTime();
-							(stream.GetOwningDevice()).SendPropertyStatesChangedMessage();
-							LOGINFO("DPA::Sample::Server::Stream::StreamOutputCallback:  Dropped a frame (%ld)", stream.mUnderrunCount);
-						}
-						stream.mEvents[1].mEventFrameCount = theBufferControl.totalFrameCount; 
-                        stream.mEvents[1].mDroppedFrameCount = static_cast<UInt32>(theBufferControl.droppedFrameCount);
-					}
-					
-					// Save hosttime
-					stream.mEvents[0].mHostTimeInNanos = CAHostTimeBase::ConvertToNanos(theBufferControl.vbiTime);
-                }
-                        
-				stream.mFreeList.push_back(entry);
-			}
-                        
-			// Get a mOutputBuffer
-            UInt32 buffersServiced = 0;
-            while (buffersServiced < kMaxRequestsPerCallback)
-            {
-                if (not stream.mOutputBuffer.IsValid())
-                    stream.GetOutputBuffer(stream.mOutputBufferRequestPort);
-                        
-                if (not stream.mOutputBuffer.IsValid() or not stream.mStreaming)
-                    break;
-                
-				if (not stream.mFreeList.empty())
-				{
-					entry = stream.mFreeList.front();
-					stream.mFreeList.pop_front();
-                    
-                    //copy the data from the mOutputBuffer to the entry and send back
-                    if (stream.mOutputBuffer.GetDataLength() <= entry.dataLength)
-                    {
-                        SampleVideoDeviceControlBuffer theBufferControl;
-                        bcopy(stream.mIOSAStream.GetControlBuffer(entry.bufferID), &theBufferControl, sizeof(SampleVideoDeviceControlBuffer));
-									
-						bcopy(stream.mOutputBuffer.GetDataPointer(0, NULL, NULL), stream.mIOSAStream.GetDataBuffer(entry.bufferID), stream.mOutputBuffer.GetDataLength());
-                        
-                        theBufferControl.sequenceNumber = stream.mCurrentOutputSequenceNumber;
-                        theBufferControl.discontinuityFlags = stream.mCurrentDiscontinuityFlags;
-                        theBufferControl.smpteTime = stream.mCurrentSMPTETime;
- 
-                        bcopy(&theBufferControl, stream.mIOSAStream.GetControlBuffer(entry.bufferID), sizeof(SampleVideoDeviceControlBuffer));
-					}
-                    else
-                    {
-                        LOGINFO("MIO::DPA::Sample::Server::Stream::StreamOutputCallback:  Mismatched Data length buffer = %ld entry = %ld", stream.mOutputBuffer.GetDataLength(), entry.dataLength);
-                    }
-					(**stream.mIOSAStream).EnqueueInputBuffer(stream.mIOSAStream, entry.bufferID, 0, 0, 0, 0);
-					(**stream.mIOSAStream).SendInputNotification(stream.mIOSAStream, 0xAA);
-                    
-                    stream.mOutputBuffer.Reset();
-                }
-                else
-                {
-                    LOGINFO("MIO::DPA::Sample::Server::Stream::StreamOutputCallback: NO BUFFERS IN STREAM");
-                    break;
-				}
-				
-                ++buffersServiced;
-			}
+            stream.FrameArrived();
 		}
  
 		// Indicate that the output callback is not being invoked
@@ -1148,20 +993,17 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// FrameArrived()
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	void Stream::FrameArrived(IOStreamBufferQueueEntry& entry)
+	void Stream::FrameArrived()
 	{
 		// Get the host time of the the frame (currently reported as the sole contents of the entry's control buffer)
-		SampleVideoDeviceControlBuffer* theBufferControl = reinterpret_cast<SampleVideoDeviceControlBuffer*>(mIOSAStream.GetControlBuffer(entry.bufferID));
-		ThrowIfNULL(theBufferControl, CAException(kCMIOHardwareUnspecifiedError), "Stream::FrameArrived: unable to get control buffer");
-		
 		// Create the presentation time stamp
-		CMTime presentationTimeStamp = CMTimeMakeWithSeconds(CAHostTimeBase::ConvertToNanos(theBufferControl->vbiTime) / 1000000000.0, GetNominalFrameDuration().timescale);
+//        CMTime presentationTimeStamp = CMTimeMakeWithSeconds(CAHostTimeBase::ConvertToNanos(theBufferControl->vbiTime) / 1000000000.0, GetNominalFrameDuration().timescale);
 		
 		// Create the timing information
-		CMA::SampleBuffer::TimingInfo timingInfo(GetNominalFrameDuration(), presentationTimeStamp, kCMTimeInvalid);
+//        CMA::SampleBuffer::TimingInfo timingInfo(GetNominalFrameDuration(), presentationTimeStamp, kCMTimeInvalid);
 		
 		// Wrap the entry in a Frame
-		Frame* frame = new Frame(mIOSAStream, GetFrameType(), theBufferControl->vbiTime, timingInfo, GetDiscontinuityFlags(), static_cast<UInt32>(theBufferControl->droppedFrameCount), theBufferControl->firstVBITime, entry.bufferID, entry.dataLength, mIOSAStream.GetDataBuffer(entry.bufferID));
+        Frame* frame = nullptr;//new Frame(mIOSAStream, GetFrameType(), theBufferControl->vbiTime, timingInfo, GetDiscontinuityFlags(), static_cast<UInt32>(theBufferControl->droppedFrameCount), theBufferControl->firstVBITime, entry.dataLength, mIOSAStream.GetDataBuffer(entry.bufferID));
 
 		// Clear the discontinuity flags since any accumulated discontinuties have passed onward with the frame
 		SetDiscontinuityFlags(kCMIOSampleBufferNoDiscontinuities);

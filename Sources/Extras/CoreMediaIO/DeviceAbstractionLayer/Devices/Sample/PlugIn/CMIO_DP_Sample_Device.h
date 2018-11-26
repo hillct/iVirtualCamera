@@ -118,7 +118,6 @@ namespace CMIO { namespace DP { namespace Sample
 
 	protected:
 		UInt64									mDeviceGUID;	// The 'pseduo-GUID' of the device returned from the Assistant
-		IOKA::Object							mRegistryEntry;	// The IOKit registry entry for the device
 
 	// Attributes
 	public:

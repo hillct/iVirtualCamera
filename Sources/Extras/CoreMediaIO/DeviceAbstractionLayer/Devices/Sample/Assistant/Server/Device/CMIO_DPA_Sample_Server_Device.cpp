@@ -54,7 +54,7 @@
 
 // Internal Includes
 #include "CMIO_DPA_Sample_Server_Assistant.h"
-#include "CMIO_KEXT_Sample_ControlIDs.h"
+//#include "CMIO_KEXT_Sample_ControlIDs.h"
 #include "CMIO_DP_ControlDictionary.h"
 #include "CMIO_DP_IOV_ControlDictionary.h"
 #include "CMIO_DP_Sample_ControlIDs.h"
@@ -62,8 +62,6 @@
 // Public Utility Includes
 #include "CMIODebugMacros.h"
 #include "CMIO_BitField.h"
-#include "CMIO_IOKA_Iterator.h"
-#include "CMIO_PTA_NotificationPortThread.h"
 
 // CA Public Utility Includes
 #include "CAAutoDisposer.h"
@@ -77,8 +75,6 @@
 
 // System Includes
 #include <CoreAudio/HostTime.h>
-#include <IOKit/audio/IOAudioTypes.h>
-#include <IOKit/IOMessage.h>
 #include <CoreMediaIO/CMIOHardware.h>
 #include <mach/mach.h>
 
@@ -127,10 +123,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// Device()
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	Device::Device(IOKA::Object& registryEntry, PTA::NotificationPortThread& notificationPortThread) :
-		mRegistryEntry(registryEntry),
-        mIOVAPlugIn(IOVA::AllocatePlugIn(mRegistryEntry)),
-        mIOVADevice(IOVA::AllocateDevice(mIOVAPlugIn)),
+	Device::Device() :
 		mStateMutex("CMIO::DPA::Sample::Device state mutex"),
 		mDeviceGUID(mGUIDGenerator++),
 		mInputStreams(),
@@ -149,26 +142,11 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		mControls(),
 		mControlStateNotifiers(),
 		mControlStateNotifiersMutex("CMIO::DPA::Sample::Server::Device control state notififiers mutex"),
-		mNotificationThread(notificationPortThread),
-		mPowerNotificationPort(GetNotificationThread().GetRunLoop(), kCFRunLoopDefaultMode, reinterpret_cast<IOServiceInterestCallback>(PowerNotification), this),
 		mSleeping(false),
 		mRestartStreamOnWake(false)
 	{ 
 		// Grab the mutex for the device's state
 		CAMutex::Locker locker(mStateMutex);
-		
-		// Get the registry path for the device
-		IOReturn err = IORegistryEntryGetPath(mRegistryEntry, kIOServicePlane, mRegistryPath);
-		ThrowIfKernelError(err, CAException(err), "CMIO::DPA::Sample::Server::Device:: IORegistryEntryGetPath() failed")
-		
-		// Open the underlying IOVideoDevice
-		mIOVADevice.Open();
-		
-		// Add the IOVDevice's notifcation port run loop source to the notificaton thread
-		mIOVADevice.AddToRunLoop(GetNotificationThread().GetRunLoop());
-		
-		// Specify the callback for device notifications
-		mIOVADevice.SetNotificationCallback(reinterpret_cast<IOVideoDeviceNotificationCallback>(IOVDeviceNotification), this);
 		
 		// Discover what streams the device has
 		DiscoverStreams();
@@ -198,12 +176,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			delete (*mOutputStreams.begin()).second;
 			mOutputStreams.erase(mOutputStreams.begin());
 		}
-		
-		// Remove the IOVDevice's notifcation port run loop source from the notificaton thread
-		mIOVADevice.RemoveFromRunLoop(GetNotificationThread().GetRunLoop());
-		
-		// Close the underlying IOVideoDevice (a safe NOP if it is not open)
-		mIOVADevice.Close();
 		
 		// Erase any ports that were to be used for control state change notification
 		for (ClientNotifiers::iterator i = mControlStateNotifiers.begin() ; i != mControlStateNotifiers.end() ; ++i)
@@ -353,86 +325,10 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		// Grab the mutex for the Device's state
 		CAMutex::Locker locker(mStateMutex);
 
-		// Fetch the input streams list
-		CACFArray inputStreamList(static_cast<CFArrayRef>(IORegistryEntryCreateCFProperty(mRegistryEntry, CFSTR(kIOVideoDeviceKey_InputStreamList), NULL, 0)), true);
-		
-		// Iterate through the input streams, locate their registry entries, and add them to the mInputStreams map
-		UInt32 streamCount = inputStreamList.GetNumberItems();
-		for (UInt32 index = 0 ; index < streamCount ; ++index)
-		{
-			// Get the stream dictionary
-			CFDictionaryRef streamDictionary = NULL;
-			if (inputStreamList.GetDictionary(index, streamDictionary))
-			{
-				// Get the streamID from the the dictionary
-				UInt32 streamID = CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(streamDictionary, CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32();
-
-				// Iterate over all the device's streams and find the registry entry for this stream
-				IOKA::Iterator iterator(mRegistryEntry, kIOServicePlane);
-				
-				while (true)
-				{
-					IOKA::Object registryEntry(iterator.Next());
-					if (not registryEntry.IsValid())
-						break;
-					
-					// Make sure the registry entry conforms to an IOVideoStream
-					if (not registryEntry.ConformsTo("IOVideoStream"))
-						continue;
-				
-					// Make sure the streamIDs are the same
-					if (streamID != CACFNumber(static_cast<CFNumberRef>(IORegistryEntryCreateCFProperty(registryEntry, CFSTR(kIOVideoStreamKey_StreamID), NULL, 0))).GetSInt32())
-						continue;
-					
-					// Add the stream to the map of input streams the device tracks
-					mInputStreams[streamID] = new Stream(this, registryEntry, streamDictionary, kCMIODevicePropertyScopeInput);
-					
-					// break out of the while loop since the stream was located
-					break;
-				}
-			
-			}
-		}
-
-		// Fetch the output streams list
-		CACFArray outputStreamList(static_cast<CFArrayRef>(IORegistryEntryCreateCFProperty(mRegistryEntry, CFSTR(kIOVideoDeviceKey_OutputStreamList), NULL, 0)), true);
-
-		// Iterate through the output streams, locate their registry entries, and add them to the mOutputStreams map
-		streamCount = outputStreamList.GetNumberItems();
-		for (UInt32 index = 0 ; index < streamCount ; ++index)
-		{
-			// Get the stream dictionary
-			CFDictionaryRef streamDictionary = NULL;
-			if (outputStreamList.GetDictionary(index, streamDictionary))
-			{
-				// Get the streamID from the the dictionary
-				UInt32 streamID = CACFNumber(static_cast<CFNumberRef>(CFDictionaryGetValue(streamDictionary, CFSTR(kIOVideoStreamKey_StreamID))), false).GetSInt32();
-
-				// Iterate over all the device's streams and find the registry entry for this stream
-				IOKA::Iterator iterator(mRegistryEntry, kIOServicePlane);
-				
-				while (true)
-				{
-					IOKA::Object registryEntry(iterator.Next());
-					if (not registryEntry.IsValid())
-						break;
-					
-					// Make sure the registry entry conforms to an IOVideoStream
-					if (not registryEntry.ConformsTo("IOVideoStream"))
-						continue;
-				
-					// Make sure the streamIDs are the same
-					if (streamID != CACFNumber(static_cast<CFNumberRef>(IORegistryEntryCreateCFProperty(registryEntry, CFSTR(kIOVideoStreamKey_StreamID), NULL, 0))).GetSInt32())
-						continue;
-					
-					// Add the stream to the map of output streams the device tracks
-					mOutputStreams[streamID] = new Stream(this, registryEntry, streamDictionary, kCMIODevicePropertyScopeOutput);
-					
-					// break out of the while loop since the stream was located
-					break;
-				}
-			}
-		}
+        // Add the stream to the map of input streams the device tracks
+        // TODO: add stream
+//        mInputStreams[streamID] = new Stream(this, streamDictionary, kCMIODevicePropertyScopeInput);
+	
 	}
 
 
@@ -1086,20 +982,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		
 		switch (controlID)
 		{
-			case KEXT::Sample::kDirectionControlID:
-				{
-					RemoveStreams();
-					mIOVADevice.SetControl(controlID, value, newValue);
-					DiscoverStreams();
-				}
-				break;
-			
-			case KEXT::Sample::kInputSourceSelectorControlID:
-				{
-					mIOVADevice.SetControl(controlID, value, newValue);
-				}
-				break;
-				
 			case CMIO::DP::Sample::kProtocolSelectorControlID:
 				{
 					if (mControlsList.IsValid())
@@ -1183,36 +1065,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	// InitializeControls()
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	void Device::InitializeControls()
-	{
-		{
-			// Get the kext control list from the IORegistry
-			CACFArray controlList = CACFArray(static_cast<CFArrayRef>(IORegistryEntryCreateCFProperty(mRegistryEntry, CFSTR(kIOVideoDeviceKey_ControlList), NULL, 0)), true);
-
-			// Don't do anything if the list is not valid
-			if (not controlList.IsValid())
-				return;
-
-			// Use "now" as the shadow time for when the controls were last changed
-			UInt64 shadowTime = CAHostTimeBase::GetTheCurrentTime();
-
-			// Iterate over the controls
-			UInt32 controlCount = controlList.GetNumberItems();
-			for (UInt32 index = 0 ; index < controlCount ; ++index)
-			{
-				// Get the control dictionary:DP::ControlDictionary::S
-				CFDictionaryRef controlDictionary = NULL;
-				if (controlList.GetDictionary(index, controlDictionary))
-				{
-					// Extract the control ID
-					UInt32 controlID = DP::IOV::ControlDictionary::GetControlID(controlDictionary);
-					
-					// Make an entry for it in the map of Controls
-					mControls[controlID].mValueShadowTime = shadowTime;
-					mControls[controlID].mRangeShadowTime = shadowTime;
-				}
-			}
-		}
-		
+	{		
 		//Create the plugin based controls
 		{
 			CACFArray			theSourceSelectorMap;
@@ -1338,68 +1191,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	
 	
 	#pragma mark -
-	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	// IOVDeviceNotification()
-	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	void Device::IOVDeviceNotification(IOVideoDeviceRef /*deviceRef*/, Device& device, const IOVideoDeviceNotificationMessage& message)
-	{
-		// Grab the mutex for the device's state
-		CAMutex::Locker locker(device.mStateMutex);
-		
-		// Assume this notification is not about a control change
-		bool sendControlStatesChangedMessage = false;
-		
-		// Record the shadow time in the event a control as been altered
-		UInt64 shadowTime = CAHostTimeBase::GetTheCurrentTime();
-
-		#if Log_HardareNotifications
-			LOGINFO("Device::IOVDeviceNotification: received %lu messages", message.mNumberNotifications);
-		#endif
-		
-		// A message can contain many notifications, so iterate through them
-		for (UInt32 notificationindex = 0 ; notificationindex < message.mNumberNotifications ; ++notificationindex)
-		{
-			#if Log_HardareNotifications
-				char notificationIDString[] = CA4CCToCString(message.mNotifications[notificationindex].mNotificationID);
-				LOGINFO("Device::IOVDeviceNotification: Handling notification %lu: Object ID: %lu Notification ID: '%s' (%lu, %lu, %qd, %qd)", notificationindex, message.mNotifications[notificationindex].mObjectID, notificationIDString, message.mNotifications[notificationindex].mNotificationArgument1, message.mNotifications[notificationindex].mNotificationArgument2, message.mNotifications[notificationindex].mNotificationArgument3, message.mNotifications[notificationindex].mNotificationArgument4);
-			#endif
-			
-			// Figure out what object this notification is for
-			if (0 == message.mNotifications[notificationindex].mObjectID)
-			{
-				#if Log_HardareNotifications
-					LOGINFO("Device::IOVDeviceNotification: Notification %lu is a device notification", notificationIndex);
-				#endif
-				
-				// This is a device level notification
-				device.DeviceNotification(message.mNotifications[notificationindex]);
-			}
-			else
-			{
-				// Check to see if this object is a stream
-				Stream* stream = device.GetStreamByStreamID(message.mNotifications[notificationindex].mObjectID);
-				if (NULL != stream)
-				{
-					device.StreamNotification(message.mNotifications[notificationindex], *stream);
-				}
-				else
-				{
-					// Check to see if this object is a control
-					Controls::const_iterator i = device.mControls.find(message.mNotifications[notificationindex].mObjectID);
-					if (i != device.mControls.end())
-					{
-						device.ControlNotification(message.mNotifications[notificationindex], shadowTime);
-						
-						// Since some control was altered, remember that a "controls changed" message will have to be sent
-						sendControlStatesChangedMessage = true;
-					}
-				}
-			}
-		}
-		
-		if (sendControlStatesChangedMessage)
-			device.SendControlStatesChangedMessage();
-	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// DeviceNotification()
@@ -1442,36 +1233,4 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		};
 	}
 	
-	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	// PowerNotification()
-	//	Which notifications are handled (and how they are handled) can vary based on the device.
-	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	void Device::PowerNotification(Device& device, io_service_t unused, natural_t messageType, void* message)
-	{
-		// Catch all exceptions since this is invoked via a call back and the exception cannot leave this routine 
-		try
-		{
-			switch (messageType)
-			{
-				case kIOMessageCanSystemSleep:
-					(void) IOAllowPowerChange(device.mPowerNotificationPort.GetRootPowerDomain(), reinterpret_cast<long>(message));
-					break;
-					
-				case kIOMessageSystemWillSleep:
-					device.Sleep();
-					(void) IOAllowPowerChange(device.mPowerNotificationPort.GetRootPowerDomain(), reinterpret_cast<long>(message));
-					break;
-					
-				case kIOMessageSystemHasPoweredOn:
-					device.Wake();
-					break;
-					
-				default:
-					break;
-			}
-		}
-		catch (...)
-		{
-		}
-	}
 }}}}

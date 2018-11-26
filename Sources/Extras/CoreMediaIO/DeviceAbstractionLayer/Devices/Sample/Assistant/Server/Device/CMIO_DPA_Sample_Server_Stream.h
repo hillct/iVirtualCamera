@@ -57,8 +57,6 @@
 
 // Public Utility Includes
 #include "CMIO_CMA_BlockBuffer.h"
-#include "CMIO_IOKA_Object.h"
-#include "CMIO_IOSA_Assistance.h"
 
 // CA Public Utility Includes
 #include "CACFArray.h"
@@ -68,8 +66,6 @@
 
 // System Includes
 #include <CoreMedia/CMTime.h>
-#include <IOKit/stream/IOStreamLib.h>
-
 
 // Standard Library Includes
 #include <map>
@@ -90,7 +86,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	{
 	// Construction/Destruction
 	public:
-										Stream(Device* device, IOKA::Object& registryEntry, CFDictionaryRef streamDictionary, CMIOObjectPropertyScope scope);
+										Stream(Device* device, CFDictionaryRef streamDictionary, CMIOObjectPropertyScope scope);
 		virtual							~Stream();
 
 	private:
@@ -98,8 +94,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 
 	protected:
 		Device*							mDevice;
-		IOKA::Object					mRegistryEntry;				// The IOKit registry entry for the device
-		CACFDictionary					mStreamDictionary; 
+		CACFDictionary					mStreamDictionary;
 
 	// Attributes & Properties
 	public:
@@ -108,7 +103,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		bool							IsOutput() const { return not mIsInput; }
 		CMIOObjectPropertyScope			GetDevicePropertyScope() const { return mIsInput ? kCMIODevicePropertyScopeInput : kCMIODevicePropertyScopeOutput; }
 		CMIOObjectPropertyScope			GetOppositeDevicePropertyScope() const	{ return mIsInput ? kCMIODevicePropertyScopeOutput : kCMIODevicePropertyScopeInput; }
-		IOSA::Stream&					GetIOSAStream() { return mIOSAStream; }
 		UInt32							GetStartingDeviceChannelNumber() const;
 		UInt32							GetCurrentNumberChannels() const;
 		bool							Streaming() const { return mStreaming; }
@@ -129,8 +123,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
         Float64                         CodecFlagsToFrameRate(UInt32 codecFlags);
 
 	protected:
-        IOSA::PlugIn					mIOSPAlugIn;				// IOSA wrapper kIOStreamLibTypeID's IOCFPlugInInterface** 
-        IOSA::Stream					mIOSAStream;				// IOSA wrapper for IOVideoStreamRef
 		CAMutex							mStateMutex;				// Controls access to device's state
 		bool							mIsInput;
 		bool							mStreaming;					// True when streaming
@@ -190,9 +182,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		void							Start(Client client, mach_port_t messagePort, UInt32 initialDiscontinuityFlags);
 		void							Stop(Client client);
 		
-		static void						StreamOutputCallback(IOStreamRef /*streamRef*/, Stream& stream);
-	
-		void							FrameArrived(IOStreamBufferQueueEntry& entry);
+        static void                     StreamOutputCallback(Stream& stream);
+        void							FrameArrived();
 		void							GetOutputBuffer(mach_port_t& recipient);
 		static void						ReleaseOutputBufferCallBack(void* refCon, void *doomedMemoryBlock, size_t sizeInBytes);
 		static void						ReleasePixelBufferCallback(void* refCon, void *doomedMemoryBlock, size_t sizeInBytes);
@@ -222,10 +213,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		CAMutex							mClientStreamsMutex;		// Mutex to protect mClientStreams when adding/removing items to the map
 		CAGuard							mFrameAvailableGuard;
 
-		typedef std::list<IOStreamBufferQueueEntry> IOStreamBufferQueueEntryFreeList;
-		IOStreamBufferQueueEntryFreeList	mFreeList;
-
-        
 	private:
 		Deck							mDeck;
 		DeckListeners					mDeckListeners;

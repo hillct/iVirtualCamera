@@ -59,15 +59,13 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	// Frame
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	Frame::Frame(IOStreamRef stream, FrameType frameType, UInt64 hostTime, const CMA::SampleBuffer::TimingInfo& timingInfo, UInt32 discontinuityFlags, UInt32 droppedFrameCount, UInt64 firstFrameTime, IOStreamBufferID bufferID, size_t size, void* data) :
-		mStream(stream),
+	Frame::Frame(FrameType frameType, UInt64 hostTime, const CMA::SampleBuffer::TimingInfo& timingInfo, UInt32 discontinuityFlags, UInt32 droppedFrameCount, UInt64 firstFrameTime, size_t size, void* data) :
 		mFrameType(frameType),
 		mHostTime(hostTime),
 		mTimingInfo(timingInfo),
 		mDiscontinuityFlags(discontinuityFlags),
 		mDroppedFrameCount(droppedFrameCount),
 		mFirstFrameTime(firstFrameTime),
-		mBufferID(bufferID),
 		mSize(static_cast<UInt32>(size)),
 		mFrameData(data),
 		mClients(),
@@ -80,9 +78,6 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	Frame::~Frame()
 	{
-		// Return the frame to the queue
-		(**mStream).EnqueueInputBuffer(mStream, mBufferID, 0, 0, 0, 0);
-		(**mStream).SendInputNotification(mStream, 0xAA);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

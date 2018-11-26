@@ -57,14 +57,8 @@
 		E42AA5870E073EEC000C4D64 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1423170A0AB0CC8700467E80 /* CoreFoundation.framework */; };
 		E42AA5890E073EEC000C4D64 /* CoreMediaIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE69900A0DBE99B60077AED4 /* CoreMediaIO.framework */; };
 		E42AA58A0E073EEC000C4D64 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1469AC5A0A22D6E9001B6AE0 /* IOKit.framework */; };
-		E42AA5990E073EFB000C4D64 /* CMIO_IOKA_NotificationPort.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14EE83800A257AF600095EDC /* CMIO_IOKA_NotificationPort.cpp */; };
 		E42AA59A0E073EFB000C4D64 /* CMIODebugMacros.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DEFCDB6509E703CE00413E85 /* CMIODebugMacros.cpp */; };
-		E42AA59F0E073EFB000C4D64 /* CMIO_DALA_Object.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14C85F6F0A262A72000ECD0B /* CMIO_DALA_Object.cpp */; };
-		E42AA5A00E073EFB000C4D64 /* CMIO_PTA_NotificationPortThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 142D88CC0AC02FCC00285855 /* CMIO_PTA_NotificationPortThread.cpp */; };
-		E42AA5A50E073EFB000C4D64 /* CMIO_IOSA_Assistance.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14AB16EB0AFF79F300FB0E7F /* CMIO_IOSA_Assistance.cpp */; };
-		E42AA5A60E073EFB000C4D64 /* CMIO_IOVA_Assistance.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14031B0E0DDC9FEA00E326EE /* CMIO_IOVA_Assistance.cpp */; };
 		E42AA5A80E073EFB000C4D64 /* CMIO_DP_IOV_ControlDictionary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14031AFD0DDC9E6E00E326EE /* CMIO_DP_IOV_ControlDictionary.cpp */; };
-		E42AA5B00E073EFB000C4D64 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1469AC5A0A22D6E9001B6AE0 /* IOKit.framework */; };
 		E42AA5B10E073EFB000C4D64 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1423170A0AB0CC8700467E80 /* CoreFoundation.framework */; };
 		E42AA5B20E073EFB000C4D64 /* CoreMediaIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE69900A0DBE99B60077AED4 /* CoreMediaIO.framework */; };
 		E42AA5CD0E07410B000C4D64 /* CMIO_DP_Sample_Device.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E42AA5C10E07410B000C4D64 /* CMIO_DP_Sample_Device.cpp */; };
@@ -146,7 +140,7 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		14A927571549E60900AF3DAB /* Copy com.apple.cmio.DPA.Sample.plist to /Library/LaunchDaemons */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 12;
 			dstPath = /Library/LaunchDaemons;
 			dstSubfolderSpec = 0;
 			files = (
@@ -496,7 +490,6 @@
 			files = (
 				7B45EB7B1E65598100BF6BBF /* libCoreAudioStatic.a in Frameworks */,
 				E47C6CC311AC8A35004DD1E7 /* CoreMedia.framework in Frameworks */,
-				E42AA5B00E073EFB000C4D64 /* IOKit.framework in Frameworks */,
 				E42AA5B10E073EFB000C4D64 /* CoreFoundation.framework in Frameworks */,
 				E42AA5B20E073EFB000C4D64 /* CoreMediaIO.framework in Frameworks */,
 				143FD3681379AE7E00F53945 /* libobjc.dylib in Frameworks */,
@@ -1328,12 +1321,7 @@
 			files = (
 				7B45EB851E67F34C00BF6BBF /* log.cpp in Sources */,
 				E42AA5E90E0741B7000C4D64 /* CMIODPASample.defs in Sources */,
-				E42AA5990E073EFB000C4D64 /* CMIO_IOKA_NotificationPort.cpp in Sources */,
 				E42AA59A0E073EFB000C4D64 /* CMIODebugMacros.cpp in Sources */,
-				E42AA59F0E073EFB000C4D64 /* CMIO_DALA_Object.cpp in Sources */,
-				E42AA5A00E073EFB000C4D64 /* CMIO_PTA_NotificationPortThread.cpp in Sources */,
-				E42AA5A50E073EFB000C4D64 /* CMIO_IOSA_Assistance.cpp in Sources */,
-				E42AA5A60E073EFB000C4D64 /* CMIO_IOVA_Assistance.cpp in Sources */,
 				E42AA5A80E073EFB000C4D64 /* CMIO_DP_IOV_ControlDictionary.cpp in Sources */,
 				E42AA5EE0E0741B7000C4D64 /* CMIO_DPA_Sample_Server_Assistant.cpp in Sources */,
 				E42AA5EB0E0741B7000C4D64 /* CMIO_DPA_Sample_Server_Device.cpp in Sources */,
