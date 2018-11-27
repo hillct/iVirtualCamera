@@ -22,8 +22,8 @@
 		7B45EB7B1E65598100BF6BBF /* libCoreAudioStatic.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B45EB791E65597100BF6BBF /* libCoreAudioStatic.a */; };
 		7B45EB7F1E6564E300BF6BBF /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7B45EB7C1E6564E300BF6BBF /* log.cpp */; };
 		7B45EB851E67F34C00BF6BBF /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7B45EB7C1E6564E300BF6BBF /* log.cpp */; };
-		7BA8A78C1E8A5C4000840021 /* logo in Resources */ = {isa = PBXBuildFile; fileRef = 7BA8A78B1E8A5C4000840021 /* logo */; };
 		7BDB0C401E94D43200A33BE9 /* com.insta360.cmio.DPA.Assistant.plist in Copy com.apple.cmio.DPA.Sample.plist to /Library/LaunchDaemons */ = {isa = PBXBuildFile; fileRef = 7BDB0C3E1E94D41400A33BE9 /* com.insta360.cmio.DPA.Assistant.plist */; };
+		BE73032121AD5E280006106B /* ntsc_vyuy720x480.yuv in Resources */ = {isa = PBXBuildFile; fileRef = BE73032021AD5E280006106B /* ntsc_vyuy720x480.yuv */; };
 		E42920F810B75DB700EDA003 /* CMIO_DP_Property_Deck.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E42920F610B75DB700EDA003 /* CMIO_DP_Property_Deck.cpp */; };
 		E42920F910B75DB700EDA003 /* CMIO_DP_Property_Deck.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E42920F610B75DB700EDA003 /* CMIO_DP_Property_Deck.cpp */; };
 		E42AA55A0E073EEC000C4D64 /* CMIODebugMacros.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DEFCDB6509E703CE00413E85 /* CMIODebugMacros.cpp */; };
@@ -286,6 +286,7 @@
 		7B45EB7E1E6564E300BF6BBF /* macro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = macro.h; sourceTree = "<group>"; };
 		7BA8A78B1E8A5C4000840021 /* logo */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = logo; sourceTree = "<group>"; };
 		7BDB0C3E1E94D41400A33BE9 /* com.insta360.cmio.DPA.Assistant.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = com.insta360.cmio.DPA.Assistant.plist; sourceTree = "<group>"; };
+		BE73032021AD5E280006106B /* ntsc_vyuy720x480.yuv */ = {isa = PBXFileReference; lastKnownFileType = file; name = ntsc_vyuy720x480.yuv; path = ../../../../../../../BuildSystem/Resource/ntsc_vyuy720x480.yuv; sourceTree = "<group>"; };
 		CA0BFC061E9E047000C14E64 /* ACBaseCodec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ACBaseCodec.h; path = ../../../Users/zhongkezhang/Documents/projects/CoreImageIO/CoreMediaIO/Sources/Extras/CoreAudio/AudioCodecs/ACPublic/ACBaseCodec.h; sourceTree = "<group>"; };
 		CA0BFC071E9E047000C14E64 /* ACCodec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ACCodec.h; path = ../../../Users/zhongkezhang/Documents/projects/CoreImageIO/CoreMediaIO/Sources/Extras/CoreAudio/AudioCodecs/ACPublic/ACCodec.h; sourceTree = "<group>"; };
 		CA0BFC081E9E047000C14E64 /* ACCodecDispatchTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ACCodecDispatchTypes.h; path = ../../../Users/zhongkezhang/Documents/projects/CoreImageIO/CoreMediaIO/Sources/Extras/CoreAudio/AudioCodecs/ACPublic/ACCodecDispatchTypes.h; sourceTree = "<group>"; };
@@ -973,6 +974,7 @@
 			children = (
 				7B335C311E8F9954005AB921 /* reloadKext.sh */,
 				7BA8A78B1E8A5C4000840021 /* logo */,
+				BE73032021AD5E280006106B /* ntsc_vyuy720x480.yuv */,
 				E42AA5CA0E07410B000C4D64 /* Sample-Info.plist */,
 				E42AA5CB0E07410B000C4D64 /* Sample.exp */,
 				E42AA5C40E07410B000C4D64 /* CMIO_DP_Sample_PlugIn.h */,
@@ -1218,8 +1220,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7BA8A78C1E8A5C4000840021 /* logo in Resources */,
 				7B335C321E8F9954005AB921 /* reloadKext.sh in Resources */,
+				BE73032121AD5E280006106B /* ntsc_vyuy720x480.yuv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

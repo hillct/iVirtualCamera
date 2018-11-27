@@ -340,9 +340,11 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			mProperties[PropertyAddress(kCMIOStreamPropertyOutputBufferRepeatCount, GetDevicePropertyScope(), element)].mShadowTime = shadowTime;
 		}
         
-        mFrameDataSize = 1472 * 828 * 2;
+        mFrameDataSize = 720 * 480 * 2;
         mFrameData = new uint8_t[mFrameDataSize];
         memset(mFrameData, 0xff, mFrameDataSize);
+        
+        mFrameSourceFile = fopen("/Library/CoreMediaIO/Plug-Ins/DAL/Insta360VCam.plugin/Contents/Resources/ntsc_vyuy720x480.yuv", "rb");
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -355,6 +357,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			(void) mach_port_deallocate(mach_task_self(), mOutputBufferRequestPort);
         
         delete[] mFrameData;
+        fclose(mFrameSourceFile);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -603,8 +606,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
                     case kYUV422_1472x828:
                         theNewFormat.mVideoCodecType = kYUV422_1472x828;
                         theNewFormat.mVideoCodecFlags =FrameRateToCodecFlags(mFrameRate);
-                        theNewFormat.mWidth = 1472;
-                        theNewFormat.mHeight = 828;
+                        theNewFormat.mWidth = 720;
+                        theNewFormat.mHeight = 480;
                         break;
 						
 					default:
@@ -648,8 +651,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
                     case kYUV422_1472x828:
                         theNewFormat.mVideoCodecType = kYUV422_1472x828;
                         theNewFormat.mVideoCodecFlags =FrameRateToCodecFlags(mFrameRate);
-                        theNewFormat.mWidth = 1472;
-                        theNewFormat.mHeight = 828;
+                        theNewFormat.mWidth = 720;
+                        theNewFormat.mHeight = 480;
                         break;
 						
 					default:
@@ -747,8 +750,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
                     case kYUV422_1472x828:
                         theNewFormat.mVideoCodecType = kYUV422_1472x828;
                         theNewFormat.mVideoCodecFlags =FrameRateToCodecFlags(mFrameRate);
-                        theNewFormat.mWidth = 1472;
-                        theNewFormat.mHeight = 828;
+                        theNewFormat.mWidth = 720;
+                        theNewFormat.mHeight = 480;
                         break;
 						
 				}
@@ -784,8 +787,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
                     case kYUV422_1472x828:
                         theNewFormat.mVideoCodecType = kYUV422_1472x828;
                         theNewFormat.mVideoCodecFlags =FrameRateToCodecFlags(mFrameRate);
-                        theNewFormat.mWidth = 1472;
-                        theNewFormat.mHeight = 828;
+                        theNewFormat.mWidth = 720;
+                        theNewFormat.mHeight = 480;
                         break;
                 }
 
@@ -1003,7 +1006,9 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 	void Stream::FrameArrived()
 	{
 		// Get the host time of the the frame (currently reported as the sole contents of the entry's control buffer)
-        UInt64 vbiTime = 0;
+        UInt64 vbiTime = GetTimecode() * 1000000000.0;
+        static int frameCounter = 0;
+        
         UInt64 firstVBITime = 0;
         UInt64 droppedFrameCount = 0;
         
@@ -1012,6 +1017,10 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 		
 		// Create the timing information
         CMA::SampleBuffer::TimingInfo timingInfo(GetNominalFrameDuration(), presentationTimeStamp, kCMTimeInvalid);
+        
+        fseek(mFrameSourceFile, (frameCounter % 60) * mFrameDataSize, SEEK_SET);
+        fread(mFrameData, 1, mFrameDataSize, mFrameSourceFile);
+        ++frameCounter;
 		
 		// Wrap the entry in a Frame
         Frame* frame = new Frame(GetFrameType(), vbiTime, timingInfo, GetDiscontinuityFlags(), static_cast<UInt32>(droppedFrameCount), firstVBITime, mFrameDataSize, mFrameData);

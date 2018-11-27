@@ -179,6 +179,7 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
         
         uint8_t* mFrameData;
         size_t mFrameDataSize;
+        FILE* mFrameSourceFile;
 
 	// Management
 	public:

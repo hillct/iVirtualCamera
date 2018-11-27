@@ -80,13 +80,13 @@
 // System Includes
 #include <IOKit/audio/IOAudioTypes.h>
 
-#define FRAME_WIDTH 1472
-#define FRAME_HEIGHT 736
+#define FRAME_WIDTH 720
+#define FRAME_HEIGHT 480
 
-#define OUTPUT_WIDTH 1472
-#define OUTPUT_HEIGHT 828
+#define OUTPUT_WIDTH 720
+#define OUTPUT_HEIGHT 480
 
-#define kYUV_1472X828_FrameSize (2437632)
+#define kYUV_1472X828_FrameSize (691200)
 #define kYUV_1472x828_DataSize (kARGB_1472X828_FrameSize)
 
 extern bool ShouldTerminate;
@@ -1234,7 +1234,7 @@ namespace CMIO { namespace DP { namespace Sample
 			// Get the size & data for the frame
             size_t frameSize = message->mDescriptor.size;
 
-            memcpy(message->mDescriptor.address, mLogo, frameSize);
+//            memcpy(message->mDescriptor.address, mLogo, frameSize);
             
             // Get a frame from frame queue
             void* data = message->mDescriptor.address;

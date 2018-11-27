@@ -107,6 +107,17 @@ namespace
 	const CMIO::PropertyAddress kClientSyncDiscontinuityAddress		= CMIO::PropertyAddress(kCMIODevicePropertyClientSyncDiscontinuity);
 }
 
+static pthread_t thread;
+static void* TriggerFrame(void* stream) {
+    CMIO::DPA::Sample::Server::Stream* s = (CMIO::DPA::Sample::Server::Stream*)stream;
+    while (true) {
+        usleep(1000 * 1000 / 120);
+        CMIO::DPA::Sample::Server::Stream::StreamOutputCallback(*s);
+    }
+    
+    return NULL;
+}
+
 namespace CMIO { namespace DPA { namespace Sample { namespace Server
 {
 	#pragma mark Static members
@@ -292,6 +303,8 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
 			mProperties[kDeviceIsRunningSomewhereAddress].mShadowTime = CAHostTimeBase::GetTheCurrentTime();
 			SendPropertyStatesChangedMessage();
 		}
+        
+        pthread_create(&thread, NULL, TriggerFrame, mInputStreams.begin()->second);
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -329,9 +342,9 @@ namespace CMIO { namespace DPA { namespace Sample { namespace Server
         
         CACFDictionary format;
         format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_CodecType), kYUV422_1472x828);
-        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_CodecFlags), kSampleCodecFlags_30fps);
-        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Width), 1472);
-        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Height), 828);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_CodecFlags), kSampleCodecFlags_30fps | kSampleCodecFlags_1001_1000_adjust);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Width), 720);
+        format.AddUInt32(CFSTR(kIOVideoStreamFormatKey_Height), 480);
 
         CACFArray formats;
         formats.AppendDictionary(format.GetDict());
