@@ -267,7 +267,6 @@ namespace CMIO { namespace DP { namespace Sample
 		UInt32									mRecentTimingInfoIdx;
         
         uint8_t*                               mFrame;
-        uint8_t*                               mLogo;
 	};
 }}}
 

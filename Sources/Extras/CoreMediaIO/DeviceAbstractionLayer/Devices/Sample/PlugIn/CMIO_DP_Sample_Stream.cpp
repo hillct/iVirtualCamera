@@ -141,8 +141,7 @@ namespace CMIO { namespace DP { namespace Sample
 		mOutputHosttimeCorrection(0LL),
 		mPreviousCycleTimeSeconds(0xFFFFFFFF),
 		mSyncClock(true),
-        mFrame(nullptr),
-        mLogo(nullptr)
+        mFrame(nullptr)
 	{
 	}
 	
@@ -159,14 +158,6 @@ namespace CMIO { namespace DP { namespace Sample
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	void Stream::Initialize()
 	{
-        mLogo = new uint8_t[kYUV_1472X828_FrameSize];
-        if (mLogo)
-        {
-            FILE* logo = fopen("/Library/CoreMediaIO/Plug-Ins/DAL/Insta360VCam.plugin/Contents/Resources/logo", "rb");
-            fread(mLogo, 1, kYUV_1472X828_FrameSize, logo);
-            fclose(logo);
-        }
-        
 		// Initialize the super class
 		DP::Stream::Initialize();
 
@@ -242,11 +233,6 @@ namespace CMIO { namespace DP { namespace Sample
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	void Stream::Teardown()
 	{
-        if (mLogo)
-        {
-            delete [] mLogo;
-        }
-        
 		// Empty all the format descriptions from the format list
 		mFormatList->RemoveAllAvailableFormats();
 		
@@ -1234,8 +1220,6 @@ namespace CMIO { namespace DP { namespace Sample
 			// Get the size & data for the frame
             size_t frameSize = message->mDescriptor.size;
 
-//            memcpy(message->mDescriptor.address, mLogo, frameSize);
-            
             // Get a frame from frame queue
             void* data = message->mDescriptor.address;
             
